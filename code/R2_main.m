@@ -2,8 +2,9 @@ clear all
 clc
 close all
 %% Global variable to store optimization results
-global optimization_results Va_global Klqr;
+global optimization_results Va_global Klqr cost_history;
 optimization_results = [];
+cost_history=[];
 %% Initial motor parameters
 %[1] Resistance - R
 %[2] Indutance - L
@@ -90,7 +91,7 @@ clear R L Km Kb Kf J q1 q2 r h1 h2 dcm dc_aug K_lqr P C OL CL i w integral_w Va_
 param_bounds = params_initial(1:9) * 0.2;
 lb = params_initial - param_bounds;
 ub = params_initial + param_bounds;
-options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp');
+options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp','OutputFcn', @outfun);
 options.OptimalityTolerance = 1e-6; % exemplo: 1e-6
 % Run the optimization
 [opt_params, ~] = fmincon(@(p) optimize_motor(p,Td,t), params_initial, [], [], [], [], lb, ub, [], options);
@@ -128,8 +129,9 @@ disp('Comparison of Motor Parameters: Initial vs Optimized');
 disp(comparison_table);
 
 %% Saving data
-save('motor_performance_data_D02_C03.mat', 'Td', 'y_initial', 'y_optimized');
-save('Va_D02_C03.mat', 'Va_initial', 'Va_final')
+% save('motor_performance_data_D02_C03.mat', 'Td', 'y_initial', 'y_optimized');
+% save('Va_D02_C03.mat', 'Va_initial', 'Va_final')
+save('cost_history_D02_C03.mat', 'cost_history');
 %% Plotting
 % figure;
 % plot(t, y_initial, 'Color', [0, 0.45, 0.73], 'LineWidth', 2.5);
@@ -209,4 +211,14 @@ optimization_results = [optimization_results; params, cost, ...
     energy];
 Va_global=Va;
 K_lqr=Klqr;
+end
+
+function stop = outfun(x, optimValues, state)
+    stop = false; % Não parar o algoritmo
+    global cost_history
+    switch state
+        case 'iter'
+            % Concatena os resultados atuais com os anteriores
+            cost_history = [cost_history; optimValues.fval, optimValues.funccount];
+    end
 end
